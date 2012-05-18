@@ -12,185 +12,32 @@
 </script>
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 <script type="text/javascript">
+var filePath="http://mvjohn100.coolpage.biz/jkapr5.kml";
+var startLocation; // for getting start point from file
+var endLocation;// for getting end point from file
+var routeName,routeType,routeSport,routeGrade,routeDist;
+var elevdata;
+var redData=[];
+var lastSegmentSampleCount=0;
+var totalLastElement=0;
+var noOfData;
+
+
 
 // Load the Visualization API and the piechart package.
 google.load('visualization', '1.0', {'packages':['corechart']});
-
-var transparentimage = 'mrkr_transparent.png';// transparent image path  
-var markerOptions= {
-    icon: transparentimage
-
-
-}
-var rendererOptions = {
-    draggable: true,
-    preserveViewport: true,
-    suppressMarkers: false,
-    markerOptions: markerOptions
-};
-var rendererOptions2 = {
-    draggable: false
-};
-var directionsDisplay = new google.maps.DirectionsRenderer(rendererOptions);
-var directionsService = new google.maps.DirectionsService();
-var map,start,end;
-var marker1,marker2;// for start and end marker
-var count=0; // to count the number of clicks on the map
-// kml page initial elements and further information will be added to this variable 
-var data='&lt?xml version="1.0" encoding="UTF-8"?&gt &ltkml xmlns="http://www.opengis.net/kml/2.2"&gt   &ltDocument&gt     &ltname&gtcyclemycity.com &lt/name&gt &ltdescription&gtSchedule and Participate in Group Rides &lt/description&gt  &ltStyle id="sameLinePolyColour"&gt &ltLineStyle&gt        &ltcolor&gt8B0000FF&lt/color&gt       &ltwidth&gt5&lt/width&gt      &lt/LineStyle&gt      &ltPolyStyle&gt        &ltcolor&gt8B0000FF&lt/color&gt        &ltwidth&gt5&lt/width&gt   &lt/PolyStyle&gt    &lt/Style&gt';
-var poly; // for makeing poly line on map
-var path /*for storing polyline data*/,path2=[],/* for storing elevation data */ path22=[];/* for storing last segment elevation data*/
-var total = 0; // for storing total distance value expect the last segment distance value
-var totalLastElement=0; // for storing distance of last segment. 
-var geocoder; // store geocoder object which fetch geolocation information
-var startimage = 'mrkr_start.png';// start button image path
-var stopimage = 'mrkr_stop.png'; // end button image path
-var chart; //to store chart draw object
-var elevator; // to store elevation object
-var elevations=[],lastSegelevations=[]; // to store the fetched elevation details
-var clickListener; // to store event click handler
-var zoomnum; // to store the fetched zoom information
-var maptype; // to store the fetched map type information
-var type='Circuit'; // store type information
-var sport='Road Cycling';// store sport information
-var grade=1;
-var totalsampleCount=0;
-var lastSegmentSampleCount=0;
-var sampleCount;
-var routeName="Cycle My City Route"
-var dragOnce=false; //to make sure addListener added only once while dragging last segment
-var prevlastSegmentSampleCount=0;
-var firstStartPoint=0;
-var fresh=false;// to avoid to fetch duplicate data ( end of one segment and start of next segment)
-
-//variables for past ride 
-var elevdata;
-var redData=[];
-var noOfData;
-var routeName,routeType,routeSport,routeGrade;
-var startLocation; // for getting start point from file
-var endLocation;// for getting end point from file
-
 
 function roundNumber(num, dec)
 {
     var result = Math.round(num*Math.pow(10,dec))/Math.pow(10,dec);
     return result;
 }
-function changeGrade(menuObj)
-{
-    var i = menuObj.selectedIndex;
-
-    if(i > 0)
-    {
-        grade = menuObj.options[i].value;
-    }
-
-
-}
-function changeSport(menuObj)
-{
-    var i = menuObj.selectedIndex;
-
-    if(i > 0)
-    {
-        sport = menuObj.options[i].value;
-
-        if (sport=='Commute')
-        {
-
-            obj=document.getElementById('grade');
-            if (obj == null) return;
-            if (obj.options == null) return;
-            obj.options.length = 0;
-
-        }
-
-    }
-
-
-
-}
-
-function changeType(menuObj)
-{
-    var i = menuObj.selectedIndex;
-    type = menuObj.options[i].value;
-
-    obj=document.getElementById('grade');
-    if (obj == null) return;
-    if (obj.options == null) return;
-    obj.options.length = 0;
-
-    if (type=='Circuit')
-    {
-        obj.options[0] = new Option('Dead Flat', '1');
-        obj.options[1] = new Option('Mostly Flat', '2');
-        obj.options[2] = new Option('Undulating', '3');
-        obj.options[3] = new Option('Steep Sections', '4');
-        obj.options[4] = new Option('Very Steep Sections', '5');
-
-    }
-    else if (type=='Linear')
-    {
-        obj.options[0] = new Option('Very Downhill', '0');
-        obj.options[1] = new Option('Generally Downhill', '1');
-        obj.options[2] = new Option('Mostly Flat', '2');
-        obj.options[3] = new Option('Undulating', '3');
-        obj.options[4] = new Option('Generally Uphill', '4');
-        obj.options[5] = new Option('Very Uphill', '5');
-    }
-    else if (type=='Climb')
-    {
-        obj.options[0] = new Option('5', '0');
-        obj.options[1] = new Option('4', '1');
-        obj.options[2] = new Option('3', '2');
-        obj.options[3] = new Option('2', '3');
-        obj.options[4] = new Option('1', '4');
-        obj.options[5] = new Option('HC','5');
-
-    }
-}
-
-function chartData()
-{
-
-    prevlastSegmentSampleCount=lastSegmentSampleCount;
-    lastSegmentSampleCount = roundNumber(((totalLastElement)/100),0) + 1;
-    if (lastSegmentSampleCount<=1)
-    {
-        lastSegmentSampleCount=2;
-    }
-
-    var pathRequest = { 'path': path22,'samples': lastSegmentSampleCount }
-    elevator.getElevationAlongPath(pathRequest, plotElevationLastSegment);
-
-}
-
-function plotElevationLastSegment(results, status)
-{
-
-    if (status == google.maps.ElevationStatus.OK)
-    {
-        lastSegelevations= results;
-    }
-
-}
-
-function drawChart()
-{
-    var path3=[];
-    path3=path2.slice(0); // copying
-    sampleCount=prevlastSegmentSampleCount;
-    totalsampleCount+=sampleCount;
-    var pathRequest = { 'path': path3,'samples': sampleCount }
-    elevator.getElevationAlongPath(pathRequest, plotElevation);
-    path2.length=0;
-}
 
 function drawFetchedGraphData()
 {
     var block;
+    totalLastElement=routeDist * 1000;
+
     lastSegmentSampleCount = roundNumber(((totalLastElement)/100),0) + 1;
     chart = new google.visualization.LineChart(document.getElementById('chart_div'));
     var graphData = new google.visualization.DataTable();
@@ -215,293 +62,12 @@ function drawFetchedGraphData()
         hAxis: {title: "Distance (km)"}
     });
 
-    lastSegelevations= redData;
-
-}
-
-
-
-function drawGraph()
-{
-    var block;
-    chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-    var divedBy=(totalsampleCount+lastSegmentSampleCount-1)*1000;
-    var graphData = new google.visualization.DataTable();
-    var blockunit=roundNumber((total+totalLastElement)/(divedBy),10);
-    var block=0;
-    graphData.addColumn('number', 'Distance');
-    graphData.addColumn('number', 'Elevation');
-    for (var i = 0; i < elevations.length; i++)
-    {
-
-        graphData.addRow([roundNumber(block,3), roundNumber(elevations[i].elevation,3)]);
-        block+=blockunit;
-
-    }
-    //for adding last segment elevation
-    for (var i = 0; i < lastSegelevations.length; i++)
-    {
-
-        graphData.addRow([roundNumber(block,3), roundNumber(lastSegelevations[i].elevation,3)]);
-        block+=blockunit;
-
-
-    }
-    document.getElementById('chart_div').style.display = 'block';
-    chart.draw(graphData, {
-        width: 640,
-        height: 200,
-        legend: 'none',
-        titleY: 'Elevation (m)',
-        hAxis: {title: "Distance (km)"}
-    });
-    if(dragOnce==true)
-    {
-        clickListener=google.maps.event.addListener(map, 'click', function(event) {
-            placeMarker(event.latLng); }); // for make delay in subsequent clicks.This function drawGraph will be called  from function "computeTotalDistance()" after 750 milli seconds seconds
-        dragOnce=false;
-    }
-
-}
-
-function plotElevation(results, status)
-{
-
-    if (status == google.maps.ElevationStatus.OK)
-    {
-        elevations=  elevations.concat(results);
-
-    }
-
-}
-
-// function to make the end part of kml data
-function makeFile()
-{
-    kmldata(directionsDisplay.directions);
-    document.getElementById('butt').style.display="none";// to hide click me if clicked once
-    google.maps.event.removeListener(clickListener); // to stop any more event listening for click
-    directionsDisplay.setOptions(rendererOptions2);// for disable dragging last  segment
-    // made 3 second  dely to finish fetching elevation data
-    setTimeout(kmlData,3000);
-
-}
-// made it seperate function for make a delay
-function kmlData ()
-{
-    data+='&ltPlacemark&gt  &ltPoint&gt &ltcoordinates&gt' +  firstStartPoint.lng() + ',' + firstStartPoint.lat() +',' + 0 + '&lt/coordinates&gt  &lt/Point&gt  &lt/Placemark&gt';// start placemark data
-    data+='&ltPlacemark&gt  &ltPoint&gt &ltcoordinates&gt' +  end.lng() + ',' + end.lat() +',' + 0 + '&lt/coordinates&gt  &lt/Point&gt  &lt/Placemark&gt';// end placemark data
-    data+=' &ltPlacemark&gt      &ltname&gt' + routeName + '&lt/name&gt      &ltdescription&gt  &lt![CDATA[<a href="http://www.cyclemycity.com/">Created at http://www.cyclemycity.com</a>]]&gt  &lt/description&gt    &ltstyleUrl&gt#sameLinePolyColour&lt/styleUrl&gt';
-    data+='&ltExtendedData&gt &ltData name="routeName" &gt  &ltdisplayName&gt Route Name  &lt/displayName&gt &ltvalue&gt' + routeName + '&lt/value&gt &lt/Data&gt &ltData name="Type"&gt &ltdisplayName&gt Type of Route &lt/displayName&gt &ltvalue&gt ' + type + ' &lt/value&gt &lt/Data&gt &ltData name="Sport"&gt &ltdisplayName&gt Sport &lt/displayName&gt &ltvalue&gt ' + sport + '&lt/value&gt &lt/Data&gt';
-    data+='&ltData name="Grade"&gt &ltdisplayName&gt Grade &lt/displayName&gt &ltvalue&gt ' + grade + ' &lt/value&gt &lt/Data&gt &ltData name="Distance"&gt &ltdisplayName&gt Route Distance &lt/displayName&gt &ltvalue&gt' + total/1000 + '&lt/value&gt &lt/Data&gt &lt/ExtendedData&gt &ltLineString&gt         &ltextrude&gt1&lt/extrude&gt         &lttessellate&gt1&lt/tessellate&gt         &ltaltitudeMode&gtclampToGround&lt/altitudeMode&gt         &ltcoordinates&gt ';
-    for (var i = 0; i < elevations.length; i++)
-    {
-        // data variable is appended with location and elevation data
-        data+=elevations[i].location.lng() +','+ elevations[i].location.lat() +',' +  elevations[i].elevation + '\n' ;
-
-    }
-    for (var i = 0; i < lastSegelevations.length; i++)
-    {
-        data+=lastSegelevations[i].location.lng() +','+ lastSegelevations[i].location.lat() +',' +  lastSegelevations[i].elevation +  '\n' ;
-    }
-
-    data+='&lt/coordinates&gt&lt/LineString&gt &lt/Placemark&gt &lt/Document&gt &lt/kml&gt';
-    document.getElementById('data').innerHTML = data;// for showing it on the page
-}
-// function to make center of the map based on passed address if geolocation failed
-
-function codeAddress(addressvalue) {
-    var address = addressvalue;
-    geocoder.geocode( { 'address': address}, function(results, status) {
-        if (status == google.maps.GeocoderStatus.OK) {
-            map.setCenter(results[0].geometry.location);
-
-        }
-    });
-}
-
-function deleteMarkers()
-{
-
-    if (marker2 )
-    {
-        marker2.setMap(null);
-        marker2=0;
-    }
-}
-
-function computeTotalDistance(result)
-{
-
-    var myroute = result.routes[0];
-    // to avoid duplicate start/end points
-    var v=1;
-    totalLastElement=0;
-    //for total distance
-
-    for (i = 0; i < myroute.legs.length; i++)
-    {
-        totalLastElement+= myroute.legs[i].distance.value;
-    }
-
-    document.getElementById('total').textContent=(total+totalLastElement)/1000 +" km";
-
-    //for showing elevation chart for last segment
-    path22.length=0;
-
-    if(fresh==true)
-    {
-
-        for (i = 0; i < myroute.legs.length; i++)
-        {
-
-            for (j =0; j < myroute.legs[i].steps.length; j++)
-            {
-
-                for (k = v; k < myroute.legs[i].steps[j].path.length; k+=2)
-                {
-
-                    path22.push(myroute.legs[i].steps[j].path[k]);// for fetching elevation data
-                    end=myroute.legs[i].steps[j].path[k];
-                }
-            }
-
-        }
-
-        //for elevation
-        chartData();
-        setTimeout(drawGraph,2000);
-
-    }
-    else
-    {
-        drawFetchedGraphData();
-        fresh=true;
-
-    }
 
 
 }
 
-// function to get values for polyline and for elevation request 
-function kmldata(result)
-{
-    var myroute = result.routes[0];
-    //for total distance
 
-    for (i = 0; i < myroute.legs.length; i++)
-    {
-        total += myroute.legs[i].distance.value;
-
-    }
-    //for kml data
-
-    for (i = 0; i < myroute.legs.length; i++)
-    {
-
-        for (j =0; j < myroute.legs[i].steps.length; j++)
-        {
-
-            for (k = 0; k < myroute.legs[i].steps[j].path.length; k++)
-            {
-                path.push(myroute.legs[i].steps[j].path[k]);// for drawing poly line
-                path2.push(myroute.legs[i].steps[j].path[k]);// for fetching elevation data
-            }
-        }
-
-    }
-
-}
-
-function imtateFirstClick()
-{
-    count=count+1;
-    start=startLocation;
-    firstStartPoint=startLocation;// to get start as place mark
-    marker1 = new google.maps.Marker({
-        position: startLocation,
-        map: map,
-        icon: startimage
-    });
-
-
-}
-function imtateSecondClick()
-{
-    count=count+1;
-    end=endLocation;
-
-    marker2 = new google.maps.Marker({
-        position: endLocation,
-        map: map,
-        icon: stopimage
-
-    });
-
-
-    calcRoute();
-}
-function placeMarker(location) {
-
-    path = poly.getPath();
-    count=count+1;
-    dragOnce=true;
-    deleteMarkers();
-    kmldata(directionsDisplay.directions);
-    start=end;
-    end=location;
-    marker2 = new google.maps.Marker({
-        position: end,
-        map: map,
-        icon: stopimage
-    });
-
-    calcRoute();
-    setTimeout(drawChart,1000);
-    google.maps.event.removeListener(clickListener); // to stop any more event listening for click
-
-}
-
-function calcRouteWalk()
-{
-
-    var request = {
-        origin:start,
-        destination:end,
-
-        travelMode: google.maps.DirectionsTravelMode.WALKING
-    };
-    directionsService.route(request, function(result, status) {
-        if (status == google.maps.DirectionsStatus.OK)
-        {
-            directionsDisplay.setDirections(result);
-        }
-    });
-}
-// to set mode BICYCLING
-function calcRoute()
-{
-    var request = {
-        origin:start,
-        destination:end,
-        travelMode: google.maps.DirectionsTravelMode.BICYCLING
-    };
-    directionsService.route(request, function(result, status) {
-        if (status == google.maps.DirectionsStatus.OK)
-        {
-            directionsDisplay.setDirections(result);
-        }
-        else
-        {
-            calcRouteWalk(); // if bicycle mode fail want to set to walking mode
-        }
-    });
-}
-
-
-
-function initialize()
-{
+function initialize() {
 
     if (window.XMLHttpRequest)
     {// code for IE7+, Firefox, Chrome, Opera, Safari
@@ -511,13 +77,15 @@ function initialize()
     {// code for IE6, IE5
         xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
     }
-    // your.kml should be created by drawroute.html code. 
-    xmlhttp.open("GET","jk2.kml",false);
+    // your.kml should be created by drawroute.html code.
+    xmlhttp.open("GET",'jkapr5.kml',false);
     xmlhttp.send();
     xmlDoc=xmlhttp.responseXML;
+
     var loc=(xmlDoc.getElementsByTagName("coordinates")[0].childNodes[0].nodeValue).split(",");
     var loc2=(xmlDoc.getElementsByTagName("coordinates")[1].childNodes[0].nodeValue).split(",");
     endLocation = new google.maps.LatLng(loc2[1],loc2[0]);
+    startLocation= new google.maps.LatLng(loc[1],loc[0]);
 
     x=xmlDoc.getElementsByTagName("Data");
 
@@ -525,20 +93,273 @@ function initialize()
     document.getElementById('routename').textContent= "Route:- "+ routeName ;
 
     routeType=x[1].getElementsByTagName("value")[0].childNodes[0].nodeValue;
-    document.getElementById('type').textContent= "Type:- "+ routeType ;
+    // document.getElementById('type').textContent= "Type:- "+ routeType ;
+    // for changing type value, fetched from file.
+    var obj=document.getElementById('type');
+    if (obj == null) return;
+    if (obj.options == null) return;
+    obj.options.length = 0;
+    routeType=routeType.replace(/^\s+|\s+$/g, '') ;// for replace spaces
+    switch (routeType)
+    {
+        case 'Circuit':
+
+            obj.options[0] = new Option('Circuit');
+            obj.options[1] = new Option('Linear');
+            obj.options[2] = new Option('Climb');
+            break;
+
+        case 'Linear':
+
+            obj.options[0] = new Option('Linear');
+            obj.options[1] = new Option('Circuit');
+            obj.options[2] = new Option('Climb');
+            break;
+
+        case 'Climb':
+
+            obj.options[0] = new Option('Climb');
+            obj.options[1] = new Option('Linear');
+            obj.options[2] = new Option('Circuit');
+            break;
+
+    }
 
     routeSport=x[2].getElementsByTagName("value")[0].childNodes[0].nodeValue;
-    document.getElementById('sport').textContent= "Sport:- "+ routeSport ;
+    //document.getElementById('sport').textContent= "Sport:- "+ routeSport ;
+
+    var obj2=document.getElementById('sport');
+    if (obj2 == null) return;
+    if (obj2.options == null) return;
+    obj2.options.length = 0;
+    routeSport=routeSport.replace(/^\s+|\s+$/g, '') ;// for replace spaces
+
+
+    switch (routeSport)
+    {
+        case 'Road Cycling':
+
+            obj2.options[0] = new Option('Road Cycling');
+            obj2.options[1] = new Option('Mountain Biking');
+            obj2.options[2] = new Option('Touring');
+            obj2.options[3] = new Option('Commute');
+            break;
+
+        case 'Mountain Biking':
+
+
+            obj2.options[0] = new Option('Mountain Biking');
+            obj2.options[1] = new Option('Road Cycling');
+            obj2.options[2] = new Option('Touring');
+            obj2.options[3] = new Option('Commute');
+            break;
+
+        case 'Touring':
+
+            obj2.options[0] = new Option('Touring');
+            obj2.options[1] = new Option('Mountain Biking');
+            obj2.options[2] = new Option('Road Cycling');
+            obj2.options[3] = new Option('Commute');
+            break;
+
+        case 'Commute':
+
+            obj2.options[0] = new Option('Commute');
+            obj2.options[1] = new Option('Road Cycling');
+            obj2.options[2] = new Option('Mountain Biking');
+            obj2.options[3] = new Option('Touring');
+
+            break;
+
+    }
 
     routeGrade=x[3].getElementsByTagName("value")[0].childNodes[0].nodeValue;
-    document.getElementById('routeGrade').textContent= "Grade:- "+ routeGrade ;
+
+    var obj3=document.getElementById('grade');
+    if (obj3 == null) return;
+    if (obj3.options == null) return;
+    obj3.options.length = 0;
+
+    if (routeType=='Circuit')
+    {
+        switch (parseInt(routeGrade))
+        {
+            case 1:
+                obj3.options[0] = new Option('Dead Flat', '1');
+                obj3.options[1] = new Option('Mostly Flat', '2');
+                obj3.options[2] = new Option('Undulating', '3');
+                obj3.options[3] = new Option('Steep Sections', '4');
+                obj3.options[4] = new Option('Very Steep Sections', '5');
+
+                break;
+            case 2:
+
+                obj3.options[0] = new Option('Mostly Flat', '2');
+                obj3.options[1] = new Option('Dead Flat', '1');
+                obj3.options[2] = new Option('Undulating', '3');
+                obj3.options[3] = new Option('Steep Sections', '4');
+                obj3.options[4] = new Option('Very Steep Sections', '5');
+
+                break;
+            case 3:
+
+                obj3.options[0] = new Option('Undulating', '3');
+                obj3.options[1] = new Option('Dead Flat', '1');
+                obj3.options[2] = new Option('Mostly Flat', '2');
+                obj3.options[3] = new Option('Steep Sections', '4');
+                obj3.options[4] = new Option('Very Steep Sections', '5');
+
+                break;
+            case 4:
+                obj3.options[0] = new Option('Steep Sections', '4');
+                obj3.options[1] = new Option('Dead Flat', '1');
+                obj3.options[2] = new Option('Mostly Flat', '2');
+                obj3.options[3] = new Option('Undulating', '3');
+                obj3.options[4] = new Option('Very Steep Sections', '5');
+                break;
+            case 5:
+                obj3.options[0] = new Option('Very Steep Sections', '5');
+                obj3.options[1] = new Option('Dead Flat', '1');
+                obj3.options[2] = new Option('Mostly Flat', '2');
+                obj3.options[3] = new Option('Undulating', '3');
+                obj3.options[4] = new Option('Steep Sections', '4');
+
+                break;
+
+        }
+
+    }
+
+    else if( routeType=='Linear')
+    {
+        switch (parseInt(routeGrade))
+        {
+            case 0:
+                obj3.options[0] = new Option('Very Downhill', '0');
+                obj3.options[1] = new Option('Generally Downhill', '1');
+                obj3.options[2] = new Option('Mostly Flat', '2');
+                obj3.options[3] = new Option('Undulating', '3');
+                obj3.options[4] = new Option('Generally Uphill', '4');
+                obj3.options[5] = new Option('Very Uphill', '5');
+
+                break;
+            case 1:
+                obj3.options[0] = new Option('Generally Downhill', '1');
+                obj3.options[1] = new Option('Very Downhill', '0');
+                obj3.options[2] = new Option('Mostly Flat', '2');
+                obj3.options[3] = new Option('Undulating', '3');
+                obj3.options[4] = new Option('Generally Uphill', '4');
+                obj3.options[5] = new Option('Very Uphill', '5');
+                break;
+            case 2:
+                obj3.options[0] = new Option('Mostly Flat', '2');
+                obj3.options[1] = new Option('Very Downhill', '0');
+                obj3.options[2] = new Option('Generally Downhill', '1');
+                obj3.options[3] = new Option('Undulating', '3');
+                obj3.options[4] = new Option('Generally Uphill', '4');
+                obj3.options[5] = new Option('Very Uphill', '5');
+                break;
+            case 3:
+                obj3.options[0] = new Option('Undulating', '3');
+                obj3.options[1] = new Option('Very Downhill', '0');
+                obj3.options[2] = new Option('Generally Downhill', '1');
+                obj3.options[3] = new Option('Mostly Flat', '2');
+                obj3.options[4] = new Option('Generally Uphill', '4');
+                obj3.options[5] = new Option('Very Uphill', '5');
+                break;
+            case 4:
+
+                obj3.options[0] = new Option('Generally Uphill', '4');
+                obj3.options[1] = new Option('Very Downhill', '0');
+                obj3.options[2] = new Option('Generally Downhill', '1');
+                obj3.options[3] = new Option('Mostly Flat', '2');
+                obj3.options[4] = new Option('Undulating', '3');
+                obj3.options[5] = new Option('Very Uphill', '5');
+                break;
+            case 5:
+                obj3.options[0] = new Option('Very Uphill', '5');
+                obj3.options[1] = new Option('Very Downhill', '0');
+                obj3.options[2] = new Option('Generally Downhill', '1');
+                obj3.options[3] = new Option('Mostly Flat', '2');
+                obj3.options[4] = new Option('Undulating', '3');
+                obj3.options[5] = new Option('Generally Uphill', '4');
+                break;
+
+        }
+
+    }
+
+    else if (routeType=='Climb')
+    {
+        switch (parseInt(routeGrade))
+        {
+            case 0:
+                obj3.options[0] = new Option('5', '0');
+                obj3.options[1] = new Option('4', '1');
+                obj3.options[2] = new Option('3', '2');
+                obj3.options[3] = new Option('2', '3');
+                obj3.options[4] = new Option('1', '4');
+                obj3.options[5] = new Option('HC','5');
+                break;
+            case 1:
+                obj3.options[1] = new Option('4', '1');
+                obj3.options[0] = new Option('5', '0');
+                obj3.options[2] = new Option('3', '2');
+                obj3.options[3] = new Option('2', '3');
+                obj3.options[4] = new Option('1', '4');
+                obj3.options[5] = new Option('HC','5');
+
+                break;
+            case 2:
+                obj3.options[0] = new Option('3', '2');
+                obj3.options[1] = new Option('5', '0');
+                obj3.options[2] = new Option('4', '1');
+                obj3.options[3] = new Option('2', '3');
+                obj3.options[4] = new Option('1', '4');
+                obj3.options[5] = new Option('HC','5');
+                break;
+            case 3:
+                obj3.options[0] = new Option('2', '3');
+                obj3.options[1] = new Option('5', '0');
+                obj3.options[2] = new Option('4', '1');
+                obj3.options[3] = new Option('3', '2');
+                obj3.options[4] = new Option('1', '4');
+                obj3.options[5] = new Option('HC','5');
+
+                break;
+            case 4:
+                obj3.options[0] = new Option('1', '4');
+                obj3.options[1] = new Option('5', '0');
+                obj3.options[2] = new Option('4', '1');
+                obj3.options[3] = new Option('3', '2');
+                obj3.options[4] = new Option('2', '3');
+                obj3.options[5] = new Option('HC','5');
+
+                break;
+            case 5:
+                obj3.options[0] = new Option('HC','5');
+                obj3.options[1] = new Option('5', '0');
+                obj3.options[2] = new Option('4', '1');
+                obj3.options[3] = new Option('3', '2');
+                obj3.options[4] = new Option('2', '3');
+                obj3.options[5] = new Option('1', '4');
+                break;
+
+        }
+
+    }
+    //document.getElementById('routeGrade').textContent= "Grade:- "+ gradeText ;
+
+    routeDist=x[4].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    document.getElementById('routeDist').textContent= "Distance:- "+ routeDist + " K.M" ;
 
     elevdata=(xmlDoc.getElementsByTagName("coordinates")[2].childNodes[0].nodeValue).split(",");
-
     var len=elevdata.length;
 
     for (var i=0,k=1;i<len;i++,k++)
     {
+
+
         if(k==3)// we want third part of coordinates which seperated by comma
         {
             redData.push((elevdata[i].split(" "))[0]);// third elements have two parts which seperated by space and we want the first part only
@@ -546,11 +367,10 @@ function initialize()
         }
 
 
+
     }
 
     noOfData=redData.length;
-
-    startLocation= new google.maps.LatLng(loc[1],loc[0]);
 
     var myOptions = {
         zoom:14,
@@ -560,58 +380,39 @@ function initialize()
         mapTypeId: google.maps.MapTypeId.TERRAIN,
         center: startLocation
     }
-    elevator = new google.maps.ElevationService();
-    map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
 
-    var polyOptions = {
-        strokeColor: '#8B0000',
-        strokeOpacity: 1.0,
-        strokeWeight: 5
-    }
-    poly = new google.maps.Polyline(polyOptions);
-    poly.setMap(map);
-    directionsDisplay.setMap(map);
-    clickListener=google.maps.event.addListener(map, 'click', function(event) {
-        placeMarker(event.latLng); });
-    google.maps.event.addListener(map, 'zoom_changed', function() {
+    var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+
+    google.maps.event.addListener(map, 'zoom_changed', function()
+    {
         zoomnum= map.getZoom();
         maptype= map.getMapTypeId();
-        if (zoomnum>=15 && maptype=="terrain") {  map.setMapTypeId(google.maps.MapTypeId.ROADMAP); } });
-    google.maps.event.addListener(directionsDisplay, 'directions_changed', function() {
-        computeTotalDistance(directionsDisplay.directions);
+        if (zoomnum>=15 && maptype=="terrain") {  map.setMapTypeId(google.maps.MapTypeId.ROADMAP); }
     });
 
-    var adUnitDiv = document.createElement('div');
-    var adUnitOptions = {
-        format: google.maps.adsense.AdFormat.HALF_BANNER,
-        position: google.maps.ControlPosition.RIGHT_BOTTOM,
-        publisherId:'ca-pub-8600257120968353',
-        channelNumber: '2047011572',
-        map: map,
-        visible: true
-    };
-    var adUnit = new google.maps.adsense.AdUnit(adUnitDiv, adUnitOptions);
     var bikeLayer = new google.maps.BicyclingLayer();
     bikeLayer.setMap(map);
-    imtateFirstClick();
-    imtateSecondClick();
+
+    var ctaLayer = new google.maps.KmlLayer(filePath);
+    ctaLayer.setMap(map);
+    drawFetchedGraphData();
 
 }
 </script>
 </head>
-<body onload="initialize()">
 
+<body onload="initialize()">
 <div id="total" style="width:100%; height:10%"> </div><!-- for displaying total distance -->
 <div id="map_canvas" style="width:50%; height:100%"></div> <!-- for displaying map -->
 <div>
-    <select onchange="changeType(this)">
-        <option>Circuit</option>
+    <select id="type" onchange="changeType(this)">
+        <!--<option>Circuit</option>
         <option>Linear</option>
-        <option>Climb</option>
+        <option>Climb</option>-->
     </select>
 </div>
 <div>
-    <select onchange="changeSport(this)">
+    <select id="sport" onchange="changeSport(this)">
         <option>Road Cycling</option>
         <option>Mountain Biking</option>
         <option>Touring</option>
@@ -628,16 +429,20 @@ function initialize()
     </select>
 </div>
 <div id="chart_div"></div> <!-- for displaying chart -->
-<div id="butt" onclick="makeFile()">  click me   </div> <!-- for displaying "click me" and for invoke makeFile()  function which will show the kml data on the page -->
+
 <div id="data"> </div> <!-- display location for kml data  -->
 
 <div id="routename" style="width:100%; height:10%"> </div><!-- for displaying route name -->
 
-<div id="sport" style="width:100%; height:10%"> </div><!-- for displaying sport Data -->
+<!--<div id="sport" style="width:100%; height:10%"> </div> --><!-- for displaying sport Data -->
 
 
-<div id="type" style="width:100%; height:10%"> </div><!-- for displaying type Data -->
+<!--<div id="type" style="width:100%; height:10%"> </div>  --><!-- for displaying type Data -->
 
-<div id="routeGrade" style="width:100%; height:10%"> </div><!-- for displaying Grade Data -->
+<!-- <div id="routeGrade" style="width:100%; height:10%"> </div> --> <!-- for displaying Grade Data -->
+<div id="routeDist" style="width:100%; height:10%"> </div><!-- for displaying Distance Data -->
+
 </body>
 </html>
+
+

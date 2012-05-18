@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+<style type="text/css">
+    html { height: 100% }
+    body { height: 100%; margin: 0; padding: 0 }
+    #map_canvas { height: 100% }
+</style>
+<script type="text/javascript"
+        src="http://maps.googleapis.com/maps/api/js?key=AIzaSyCToCm-V2FORDb_J8kEq0g0WCF60zwKWh0&sensor=false&libraries=adsense">
+</script>
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+var filePath="http://mvjohn100.coolpage.biz/may7pastridedata.kml";
+var startLocation; // for getting start point from file
+var endLocation;// for getting end point from file
+var routeName,routeType,routeSport,routeGrade,routeDist;
+var elevdata;
+var redData=[];
+var lastSegmentSampleCount=0;
+var totalLastElement=0;
+var noOfData;
+
+
+var startDate;
+var startTime;
+var groupRide;
+var duration;
+var maxSpeed;
+var hrAve;
+var hrMax;
+var routeFollowed;
+var routeDirection;
+var aveSpeed;
+var calories;
+var fileType; // to store what type file want to open
+
+// Load the Visualization API and the piechart package.
+google.load('visualization', '1.0', {'packages':['corechart']});
+
+
+
+
+function roundNumber(num, dec)
+{
+    var result = Math.round(num*Math.pow(10,dec))/Math.pow(10,dec);
+    return result;
+}
+
+function drawFetchedGraphData()
+{
+    var block;
+    totalLastElement=routeDist * 1000;
+
+    lastSegmentSampleCount = roundNumber(((totalLastElement)/100),0) + 1;
+    chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+    var graphData = new google.visualization.DataTable();
+    var blockunit=totalLastElement/((noOfData-1)*1000);
+    var block=0;
+    graphData.addColumn('number', 'Distance');
+    graphData.addColumn('number', 'Elevation');
+    for (var i = 0; i < redData.length; i++)
+    {
+
+        graphData.addRow([roundNumber(block,3), roundNumber(redData[i],3)]);
+        block+=blockunit;
+
+    }
+
+    document.getElementById('chart_div').style.display = 'block';
+    chart.draw(graphData, {
+        width: 640,
+        height: 200,
+        legend: 'none',
+        titleY: 'Elevation (m)',
+        hAxis: {title: "Distance (km)"}
+    });
+
+
+
+}
+function kmlDataFile()      // function to read and display KML file
+{
+    if (window.XMLHttpRequest)
+    {// code for IE7+, Firefox, Chrome, Opera, Safari
+        xmlhttp=new XMLHttpRequest();
+    }
+    else
+    {// code for IE6, IE5
+        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    // your.kml should be created by drawride.html code.
+    xmlhttp.open("GET",'may7pastridedata.kml',false);
+    xmlhttp.send();
+    xmlDoc=xmlhttp.responseXML;
+
+    var loc=(xmlDoc.getElementsByTagName("coordinates")[0].childNodes[0].nodeValue).split(",");
+    var loc2=(xmlDoc.getElementsByTagName("coordinates")[1].childNodes[0].nodeValue).split(",");
+    endLocation = new google.maps.LatLng(loc2[1],loc2[0]);
+    startLocation= new google.maps.LatLng(loc[1],loc[0]);
+
+    x=xmlDoc.getElementsByTagName("Data");
+
+    routeName=x[0].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    document.getElementById('routename').textContent= "Route:- "+ routeName ;
+
+    routeType=x[1].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    // document.getElementById('type').textContent= "Type:- "+ routeType ;
+    // for changing type value, fetched from file.
+    var obj=document.getElementById('type');
+    if (obj == null) return;
+    if (obj.options == null) return;
+    obj.options.length = 0;
+    obj.disabled=true;
+    routeType=routeType.replace(/^\s+|\s+$/g, '') ;// for replace spaces
+    switch (routeType)
+    {
+        case 'Circuit':
+
+            obj.options[0] = new Option('Circuit');
+            obj.options[1] = new Option('Linear');
+            obj.options[2] = new Option('Climb');
+            break;
+
+        case 'Linear':
+
+            obj.options[0] = new Option('Linear');
+            obj.options[1] = new Option('Circuit');
+            obj.options[2] = new Option('Climb');
+            break;
+
+        case 'Climb':
+
+            obj.options[0] = new Option('Climb');
+            obj.options[1] = new Option('Linear');
+            obj.options[2] = new Option('Circuit');
+            break;
+
+    }
+
+
+    routeSport=x[2].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    //document.getElementById('sport').textContent= "Sport:- "+ routeSport ;
+
+    var obj2=document.getElementById('sport');
+    if (obj2 == null) return;
+    if (obj2.options == null) return;
+    obj2.options.length = 0;
+    obj2.disabled=true;
+    routeSport=routeSport.replace(/^\s+|\s+$/g, '') ;// for replace spaces
+
+
+    switch (routeSport)
+    {
+        case 'Road Cycling':
+
+            obj2.options[0] = new Option('Road Cycling');
+            obj2.options[1] = new Option('Mountain Biking');
+            obj2.options[2] = new Option('Touring');
+            obj2.options[3] = new Option('Commute');
+            obj2.options[4] = new Option('Static Bike');
+
+            break;
+
+        case 'Mountain Biking':
+
+
+            obj2.options[0] = new Option('Mountain Biking');
+            obj2.options[1] = new Option('Road Cycling');
+            obj2.options[2] = new Option('Touring');
+            obj2.options[3] = new Option('Commute');
+            obj2.options[4] = new Option('Static Bike');
+            break;
+
+        case 'Touring':
+
+            obj2.options[0] = new Option('Touring');
+            obj2.options[1] = new Option('Mountain Biking');
+            obj2.options[2] = new Option('Road Cycling');
+            obj2.options[3] = new Option('Commute');
+            obj2.options[4] = new Option('Static Bike');
+            break;
+
+        case 'Commute':
+
+            obj2.options[0] = new Option('Commute');
+            obj2.options[1] = new Option('Road Cycling');
+            obj2.options[2] = new Option('Mountain Biking');
+            obj2.options[3] = new Option('Touring');
+            obj2.options[4] = new Option('Static Bike');
+
+            break;
+        case 'Static Bike':
+            obj2.options[0] = new Option('Static Bike');
+            obj2.options[1] = new Option('Commute');
+            obj2.options[2] = new Option('Road Cycling');
+            obj2.options[3] = new Option('Mountain Biking');
+            obj2.options[4] = new Option('Touring');
+
+
+            break;
+
+    }
+
+
+
+
+
+    obj2=document.getElementById('groupYes');
+    groupRide=x[5].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    groupRide=parseInt(groupRide);
+    obj2.disabled=true;
+    if (groupRide==1)
+    {
+        obj2.checked=true;
+    }
+    else
+    {
+        obj2.checked=false;
+    }
+
+
+    startDate=x[3].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    obj2=document.getElementById('date');
+    obj2.value=startDate;
+    obj2.disabled=true;
+
+    startTime=x[4].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    obj2=document.getElementById('time');
+    obj2.value=startTime;
+    obj2.disabled=true;
+
+    duration=x[6].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    obj2=document.getElementById('hour');
+    obj2.value=duration;
+    obj2.disabled=true;
+
+    maxSpeed=x[7].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    obj2=document.getElementById('maxspeed');
+    obj2.value=maxSpeed;
+    obj2.disabled=true;
+
+    hrAve=x[8].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    obj2=document.getElementById('heartavg');
+    obj2.value=hrAve;
+    obj2.disabled=true;
+
+    hrMax=x[9].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    obj2=document.getElementById('heartmax');
+    obj2.value=hrMax;
+    obj2.disabled=true;
+
+
+    routeFollowed=x[10].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    obj2=document.getElementById('routeFollowed');
+    if (obj2 == null) return;
+    if (obj2.options == null) return;
+    obj2.options.length = 0;
+    routeFollowed=routeFollowed.replace(/^\s+|\s+$/g, '') ;// for replace spaces
+    obj2.options[0] = new Option(routeFollowed);
+    obj2.disabled=true;
+
+
+
+    routeDirection=x[11].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+
+    obj2=document.getElementById('direction');
+    if (obj2 == null) return;
+    if (obj2.options == null) return;
+    obj2.options.length = 0;
+    obj2.disabled=true;
+
+    switch (parseInt(routeDirection))
+    {
+        case 0:
+            obj2.options[0] = new Option('Forwards', '0');
+            obj2.options[1] = new Option('Reverse', '1');
+            break;
+        case 1:
+            obj2.options[1] = new Option('Reverse', '1');
+            obj2.options[0] = new Option('Forwards', '0');
+
+            break;
+    }
+
+
+    aveSpeed=x[12].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    obj2=document.getElementById('avespeed');
+    obj2.value=aveSpeed;
+    obj2.disabled=true;
+
+
+
+    calories=x[13].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    obj2=document.getElementById('calories');
+    obj2.value=calories;
+    obj2.disabled=true;
+
+    routeDist=x[14].getElementsByTagName("value")[0].childNodes[0].nodeValue;
+    document.getElementById('routeDist').textContent= "Distance:- "+ routeDist + " K.M" ;
+
+    elevdata=(xmlDoc.getElementsByTagName("coordinates")[2].childNodes[0].nodeValue).split(",");
+    var len=elevdata.length;
+
+    for (var i=0,k=1;i<len;i++,k++)
+    {
+
+
+        if(k==3)// we want third part of coordinates which seperated by comma
+        {
+            redData.push((elevdata[i].split(" "))[0]);// third elements have two parts which seperated by space and we want the first part only
+            k=1;
+        }
+
+
+
+    }
+
+    noOfData=redData.length;
+
+}
+
+
+
+function initialize() {
+
+    kmlDataFile() ;
+
+    var myOptions = {
+        zoom:14,
+        scaleControl:true,
+        disableDoubleClickZoom:true,
+        mapTypeControlOptions: { mapTypeIds: [google.maps.MapTypeId.SATELLITE, google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.HYBRID,  google.maps.MapTypeId.TERRAIN], style: google.maps.MapTypeControlStyle.DEFAULT },
+        mapTypeId: google.maps.MapTypeId.TERRAIN
+    }
+
+    var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+
+    google.maps.event.addListener(map, 'zoom_changed', function()
+    {
+        zoomnum= map.getZoom();
+        maptype= map.getMapTypeId();
+        if (zoomnum>=15 && maptype=="terrain") {  map.setMapTypeId(google.maps.MapTypeId.ROADMAP); }
+    });
+
+    var bikeLayer = new google.maps.BicyclingLayer();
+    bikeLayer.setMap(map);
+
+    var ctaLayer = new google.maps.KmlLayer(filePath);
+    ctaLayer.setMap(map);
+    drawFetchedGraphData();
+
+}
+</script>
+</head>
+
+<body onload="initialize()">
+
+<div id="total" style="width:100%; height:10%"> </div><!-- for displaying total distance -->
+<div id="map_canvas" style="width:50%; height:100%"></div> <!-- for displaying map -->
+
+<div>
+    <select id="type" onchange="changeType(this)">
+        <!--<option>Circuit</option>
+        <option>Linear</option>
+        <option>Climb</option>-->
+    </select>
+</div>
+<div>
+    <select id="sport">
+        <option>Road Cycling</option>
+        <option>Mountain Biking</option>
+        <option>Touring</option>
+        <option>Commute</option>
+        <option>Static Bike</option>
+    </select>
+</div>
+
+<div id="chart_div"></div> <!-- for displaying chart -->
+
+<div id="data"> </div> <!-- display location for kml data  -->
+
+<div id="routename" style="width:100%; height:10%"> </div><!-- for displaying route name -->
+
+<input type="checkbox" name="ride" id="groupYes" /> Group Ride?<br />
+
+<h4> Start </h4>
+Date: <input type="text" name="date" id="date"  /><br />
+Time: <input type="text" name="time" id="time"  /><br />
+
+Duration (hour): <input type="text" name="hours" id="hour" /><br />
+
+Maximum Speed (K.M): <input type="text" name="maxspeed" id="maxspeed"   /><br />
+Average Speed (K.M): <input type="text" name="avespeed" id="avespeed"   /><br />
+
+
+<h4> Heart beats </h4>
+Maximum rate: <input type="text" name="heartmax" id="heartmax"   /><br />
+Average rate: <input type="text" name="heartavg" id="heartavg"  /><br />
+
+Calories spend: <input type="text" name="calories" id="calories"  /><br />
+
+<h4> Route followed </h4>
+<select id="routeFollowed" >
+    <!--<option>none</option>
+  <option> kk</option> -->
+</select>
+<br/>
+<h4> Direction</h4>
+<select id="direction" >
+
+</select>
+<div id="routeDist" style="width:100%; height:10%"> </div><!-- for displaying Distance Data -->
+
+</body>
+</html>
+
+
+

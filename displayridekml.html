@@ -12,7 +12,9 @@
 </script>
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 <script type="text/javascript">
-var filePath="http://mvjohn100.coolpage.biz/may7pastridedata.kml";
+//var filePath="http://mvjohn100.coolpage.biz/may7pastridedata.kml";
+var filePath="http://mvjohn100.coolpage.biz/may305.kml";
+var filename;
 var startLocation; // for getting start point from file
 var endLocation;// for getting end point from file
 var routeName,routeType,routeSport,routeGrade,routeDist;
@@ -35,6 +37,7 @@ var routeDirection;
 var aveSpeed;
 var calories;
 var fileType; // to store what type file want to open
+var map;
 
 // Load the Visualization API and the piechart package.
 google.load('visualization', '1.0', {'packages':['corechart']});
@@ -91,7 +94,8 @@ function kmlDataFile()      // function to read and display KML file
         xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
     }
     // your.kml should be created by drawride.html code.
-    xmlhttp.open("GET",'may7pastridedata.kml',false);
+    filename= filePath.split('/');
+    xmlhttp.open("GET",filename[3],false);
     xmlhttp.send();
     xmlDoc=xmlhttp.responseXML;
 
@@ -300,6 +304,29 @@ function kmlDataFile()      // function to read and display KML file
     routeDist=x[14].getElementsByTagName("value")[0].childNodes[0].nodeValue;
     document.getElementById('routeDist').textContent= "Distance:- "+ routeDist + " K.M" ;
 
+
+
+    if (xmlDoc.getElementsByTagName("filename").length==1 )
+    {
+        filePath=xmlDoc.getElementsByTagName("filename")[0].childNodes[0].nodeValue;
+        filename= filePath.split('/');
+
+        xmlhttp.abort();
+        if (window.XMLHttpRequest)
+        {// code for IE7+, Firefox, Chrome, Opera, Safari
+            xmlhttp2=new XMLHttpRequest();
+        }
+        else
+        {// code for IE6, IE5
+            xmlhttp2=new ActiveXObject("Microsoft.XMLHTTP");
+        }
+
+        xmlhttp2.open("GET",filename[3],false);
+        xmlhttp2.send();
+        xmlDoc=xmlhttp2.responseXML;
+
+    }
+
     elevdata=(xmlDoc.getElementsByTagName("coordinates")[2].childNodes[0].nodeValue).split(",");
     var len=elevdata.length;
 
@@ -318,6 +345,12 @@ function kmlDataFile()      // function to read and display KML file
     }
 
     noOfData=redData.length;
+    drawFetchedGraphData();
+
+    var ctaLayer = new google.maps.KmlLayer(filePath);
+    ctaLayer.setMap(map);
+
+
 
 }
 
@@ -325,7 +358,7 @@ function kmlDataFile()      // function to read and display KML file
 
 function initialize() {
 
-    kmlDataFile() ;
+
 
     var myOptions = {
         zoom:14,
@@ -335,7 +368,7 @@ function initialize() {
         mapTypeId: google.maps.MapTypeId.TERRAIN
     }
 
-    var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+    map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
 
     google.maps.event.addListener(map, 'zoom_changed', function()
     {
@@ -346,10 +379,9 @@ function initialize() {
 
     var bikeLayer = new google.maps.BicyclingLayer();
     bikeLayer.setMap(map);
+    kmlDataFile() ;
 
-    var ctaLayer = new google.maps.KmlLayer(filePath);
-    ctaLayer.setMap(map);
-    drawFetchedGraphData();
+
 
 }
 </script>

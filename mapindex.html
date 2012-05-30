@@ -3,15 +3,52 @@
 <html>
 <head>
     <title></title>
+    <script type="text/javascript">
+
+        var routeFollowed;
+
+        function changeRouteFollowed(menuObj)
+        {
+            var i = menuObj.selectedIndex;
+
+
+
+            routeFollowed = menuObj.options[i].value;
+
+            if (routeFollowed=='KML')
+            {
+                window.location = './displayridekml.html';
+
+            }
+            else if(routeFollowed=='GPX')
+            {
+                window.location = './displayridegpx.html';
+            }
+            else if(routeFollowed=='TCX')
+            {
+                window.location = './displayridetcx.html';
+            }
+
+
+        }
+
+    </script>
+
 </head>
 <body>
 
+
 <div>
-    <select id="fileType")>
+    <h3>
+        Type of file to open </h3>
+
+    <select id="routeFollowed" onchange="changeRouteFollowed(this)" >
         <option>KML</option>
         <option>GPX</option>
         <option>TCX</option>
     </select>
+
+
 </div>
 </body>
 </html>

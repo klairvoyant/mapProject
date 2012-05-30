@@ -300,8 +300,7 @@ function makeFile()
 }
 // made it seperate function for make a delay
 function kmlData ()
-{
-    data+='&ltPlacemark&gt  &ltPoint&gt &ltcoordinates&gt' +  firstStartPoint.lng() + ',' + firstStartPoint.lat() +',' + 0 + '&lt/coordinates&gt  &lt/Point&gt  &lt/Placemark&gt';// start placemark data
+{   data+='&ltPlacemark&gt  &ltPoint&gt &ltcoordinates&gt' +  firstStartPoint.lng() + ',' + firstStartPoint.lat() +',' + 0 + '&lt/coordinates&gt  &lt/Point&gt  &lt/Placemark&gt';// start placemark data
     data+='&ltPlacemark&gt  &ltPoint&gt &ltcoordinates&gt' +  end.lng() + ',' + end.lat() +',' + 0 + '&lt/coordinates&gt  &lt/Point&gt  &lt/Placemark&gt';// end placemark data
     data+=' &ltPlacemark&gt      &ltname&gt' + routeName + '&lt/name&gt      &ltdescription&gt  &lt![CDATA[<a href="http://www.cyclemycity.com/">Created at http://www.cyclemycity.com</a>]]&gt  &lt/description&gt    &ltstyleUrl&gt#sameLinePolyColour&lt/styleUrl&gt';
     data+='&ltExtendedData&gt &ltData name="routeName" &gt  &ltdisplayName&gt Route Name  &lt/displayName&gt &ltvalue&gt' + routeName + '&lt/value&gt &lt/Data&gt &ltData name="Type"&gt &ltdisplayName&gt Type of Route &lt/displayName&gt &ltvalue&gt ' + type + ' &lt/value&gt &lt/Data&gt &ltData name="Sport"&gt &ltdisplayName&gt Sport &lt/displayName&gt &ltvalue&gt ' + sport + '&lt/value&gt &lt/Data&gt';

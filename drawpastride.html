@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+<style type="text/css">
+    html { height: 100% }
+    body { height: 100%; margin: 0; padding: 0 }
+    #map_canvas { height: 100% }
+</style>
+<script type="text/javascript"
+        src="http://maps.googleapis.com/maps/api/js?key=AIzaSyCToCm-V2FORDb_J8kEq0g0WCF60zwKWh0&sensor=false&libraries=adsense">
+
+</script>
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+
+// Load the Visualization API and the piechart package.
+google.load('visualization', '1.0', {'packages':['corechart']});
+
+var transparentimage = 'mrkr_transparent.png';// transparent image path
+var markerOptions= {
+    icon: transparentimage
+
+
+}
+var rendererOptions = {
+    draggable: true,
+    preserveViewport: true,
+    suppressMarkers: false,
+    markerOptions: markerOptions
+};
+var rendererOptions2 = {
+    draggable: false
+};
+var directionsDisplay = new google.maps.DirectionsRenderer(rendererOptions);
+var directionsService = new google.maps.DirectionsService();
+var map,start,end;
+var marker1,marker2;// for start and end marker
+var count=0; // to count the number of clicks on the map
+// kml page initial elements and further information will be added to this variable
+var data='&lt?xml version="1.0" encoding="UTF-8"?&gt &ltkml xmlns="http://www.opengis.net/kml/2.2"&gt   &ltDocument&gt     &ltname&gtcyclemycity.com &lt/name&gt &ltdescription&gtSchedule and Participate in Group Rides &lt/description&gt  &ltStyle id="sameLinePolyColour"&gt &ltLineStyle&gt        &ltcolor&gt8B0000FF&lt/color&gt       &ltwidth&gt5&lt/width&gt      &lt/LineStyle&gt      &ltPolyStyle&gt        &ltcolor&gt8B0000FF&lt/color&gt        &ltwidth&gt5&lt/width&gt   &lt/PolyStyle&gt    &lt/Style&gt';
+var poly; // for makeing poly line on map
+var path /*for storing polyline data*/,path2=[],/* for storing elevation data */ path22=[];/* for storing last segment elevation data*/
+var total = 1; // for storing total distance value expect the last segment distance value
+var totalLastElement=0; // for storing distance of last segment.
+var geocoder; // store geocoder object which fetch geolocation information
+var startimage = 'mrkr_start.png';// start button image path
+var stopimage = 'mrkr_stop.png'; // end button image path
+var chart; //to store chart draw object
+var elevator; // to store elevation object
+var elevations=[],lastSegelevations=[]; // to store the fetched elevation details
+var clickListener; // to store event click handler
+var zoomnum; // to store the fetched zoom information
+var maptype; // to store the fetched map type information
+var type='Circuit'; // store type information
+var sport='Road Cycling';// store sport information
+var startDate; /// date of ride, defaults to sate file is created. I'd prefer a calendar pop-up to prevent date format errors, but Avion can probably add this as they have done it elsewhere. Just use dd/mm/yy for now.
+var startTime; /// store data in seconds, but convert to hours:minutes for display. Defaults to time file is created.
+var hours; // to store  duration hours part
+var minutes=0; /// Ride duration (store data in seconds, but convert to/from hours:minutes when displayed/entered)
+var maxSpeed; /// Maximum speed
+var hrMax; /// Maximum heart rate
+var hrAve; /// Average heart rate
+var groupRide=0; /// 0 = not a group ride, 1 = was a group ride. Use radio boxes
+
+
+
+
+
+var routeFollowed="none"; /// Route followed to be selected from dropdown lists of the user's routes , used
+var routeDirection=0; /// 0 = Forward Route, 1 = Reverse Route, used
+var distance;// filled the data by the function "computeTotalDistance"
+var duration; // variable updated when the hours or minutes field data changed
+var aveSpeed; /// Average Speed calculated when 1) hours or minute fields updated 2) when make KML file
+var currentDate; //to store  date value
+
+// variables to calculate date and time
+var month;
+var day;
+var year;
+var hr;
+var min;
+// end -variables to calculate date and time
+var calories;   /// Calculated when saved. calculation depends on Sport, duration, average speed, weight, height and age
+var weight=95;
+var height=207;
+var age=37; /// Three temporary variables for use in Calorie calculation. Avion to change to link to User data.
+var gender=0; // 0 for male and 1 for female
+// variables used to calculate calories
+var rmr; //calculated in "initialize" function. based on weight,height, age and gender
+var c; // calculated while saving based on sport and Average speed
+
+var totalsampleCount=0;
+var lastSegmentSampleCount=0;
+var sampleCount;
+var rideName="Cycle My City Past Ride" // Avion to include textbox for user to enter a different ride name on the past ride entry page
+var dragOnce=false; //to make sure addListener added only once while dragging last segment
+var prevlastSegmentSampleCount=0;
+var firstStartPoint=0;
+var fresh=false;// to avoid to fetch duplicate data ( end of one segment and start of next segment)
+var kml=false;
+var elevdata;
+var fullData;
+var polyData;
+var noOfData;
+var filePath="http://mvjohn100.coolpage.biz/jkapr55.kml";
+//var filePath="http://mvjohn100.coolpage.biz/may29kml.kml";
+var startLocation; // for getting start point from file
+var endLocation;// for getting end point from file*/
+var redData=[];
+var routeDist;
+var filename;
+
+
+//variables for undo functionality
+/*
+ var prevStart,prevEnd;
+ var unDoCheck=false;
+ var prevtotalLastElement;
+ var prevtotalsampleCount;
+ var prevsampleCount;*/
+//undo function
+/*function unDo()
+ {
+ unDoCheck=true;
+ count-=1;
+ deleteMarkers();
+ totalLastElement=0;
+ path22.length=0;
+ lastSegelevations.length=0;
+ totalsampleCount=prevtotalsampleCount;// to keep for undo
+ lastSegmentSampleCount=prevlastSegmentSampleCount;
+ start=prevEnd;
+ end=prevEnd;
+
+ calcRideUndo();
+ drawGraph();
+
+
+ document.getElementById('total').textContent=(total)/1000 +" km";
+
+
+ marker2 = new google.maps.Marker({
+ position: end,
+ map: map,
+ icon: stopimage
+ });
+ }
+ */
+function roundNumber(num, dec)
+{
+    var result = Math.round(num*Math.pow(10,dec))/Math.pow(10,dec);
+    return result;
+}
+
+
+function fetchDate(Obj)
+{
+    startDate= Obj.value
+
+
+}
+function fetchTime(Obj)
+{
+    startTime= Obj.value;
+
+}
+
+function groupYes(Obj)
+{
+
+    if (Obj.checked==true)
+    {
+        groupRide= 1;
+    }
+    else
+    {
+        groupRide= 0;
+    }
+
+}
+
+
+
+function fetchHour(Obj)
+{
+    hours= parseInt(Obj.value);
+    duration= hours;
+
+}
+function fetchMinute(Obj)
+{
+
+    minutes= parseInt(Obj.value);
+
+    duration=hours+(minutes/60);
+    duration=roundNumber(duration, 2);
+
+
+
+}
+
+function fetchmaxSpeed(Obj)
+{
+    maxSpeed= Obj.value;
+
+}
+
+
+
+function fetchHeartMax(Obj)
+{
+    hrMax= Obj.value;
+
+}
+
+function fetchHeartAvg(Obj)
+{
+    hrAve= Obj.value;
+
+}
+
+
+function changeSport(menuObj)
+{
+    var i = menuObj.selectedIndex;
+
+    if(i > 0)
+    {
+        sport = menuObj.options[i].value;
+    }
+
+
+
+}
+
+function changeDirection(menuObj)
+{
+    var i = menuObj.selectedIndex;
+
+    if(i > 0)
+    {
+        routeDirection = menuObj.selectedIndex;
+    }
+
+}
+
+function changeRouteFollowed(menuObj)
+{
+    var i = menuObj.selectedIndex;
+
+
+
+    routeFollowed = menuObj.options[i].value;
+
+
+
+    obj=document.getElementById('direction');
+    if (obj == null) return;
+    if (obj.options == null) return;
+    obj.options.length = 0;
+
+    if (routeFollowed=='none')
+    {
+
+
+    }
+    else
+    {
+        obj.options[0] = new Option('Forwards', '1');
+        obj.options[1] = new Option('Reverse', '2');
+
+
+    }
+
+    if (routeFollowed=='kml')
+    {
+
+        drawfromKMLFile();
+    }
+
+
+
+}
+/// Functions required if a 'Route Followed' is selected, including asking if the existing polyline is to be replaced or not (if one has been started or
+/// imported from a differrent routeFollowed selection) and replacing the polyline, elevation data, distance, etc if the existing polyline is replaced.
+/// Code to draw polyline forwards or backwards depending on the routeDirection variable.
+
+///function changeDirection(menuObj)
+///{
+///   var i = menuObj.selectedIndex;
+/// grey out dropdown box if 'none' is selected in the routeFollowed dropdown
+///}
+
+function changeType(menuObj)
+{
+    var i = menuObj.selectedIndex;
+    type = menuObj.options[i].value;
+
+
+}
+
+function chartData()
+{
+
+    prevlastSegmentSampleCount=lastSegmentSampleCount;
+    lastSegmentSampleCount = roundNumber(((totalLastElement)/20),0) + 1;
+
+    if (lastSegmentSampleCount<=1)
+    {
+        lastSegmentSampleCount=2;
+    }
+    else if (lastSegmentSampleCount>512)
+    {
+        lastSegmentSampleCount=512;
+    }
+    // undo functionality
+    /*if( unDoCheck)
+     {
+     lastSegmentSampleCount=prevlastSegmentSampleCount;
+     }*/
+
+    var pathRequest = { 'path': path22,'samples': lastSegmentSampleCount }
+    elevator.getElevationAlongPath(pathRequest, plotElevationLastSegment);
+
+
+}
+
+function plotElevationLastSegment(results, status)
+{
+
+    if (status == google.maps.ElevationStatus.OK)
+    {
+        lastSegelevations= results;
+
+    }
+
+
+
+}
+
+function drawChart()
+{
+    var path3=[];
+    path3=path2.slice(0); // copying
+    sampleCount=prevlastSegmentSampleCount;
+//prevtotalsampleCount=totalsampleCount;// to keep for undo
+    totalsampleCount+=sampleCount;
+// undo functionality
+    /*if( unDoCheck)
+     {
+     totalsampleCount=prevtotalsampleCount+prevlastSegmentSampleCount;
+     unDoCheck=false;
+     }*/
+    var pathRequest = { 'path': path3,'samples': sampleCount };
+    elevator.getElevationAlongPath(pathRequest, plotElevation);
+    path2.length=0;
+}
+
+function drawGraph()
+{
+    var block;
+    chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+    var divedBy=(totalsampleCount+lastSegmentSampleCount-1)*1000;
+    var graphData = new google.visualization.DataTable();
+    var blockunit=roundNumber((total+totalLastElement)/(divedBy),10);
+
+
+
+    var block=0;
+    graphData.addColumn('number', 'Distance');
+    graphData.addColumn('number', 'Elevation');
+    for (var i = 0; i < elevations.length; i++)
+    {
+
+        graphData.addRow([roundNumber(block,3), roundNumber(elevations[i].elevation,3)]);
+        block+=blockunit;
+
+    }
+    //for adding last segment elevation
+    for (var i = 0; i < lastSegelevations.length; i++)
+    {
+
+        graphData.addRow([roundNumber(block,3), roundNumber(lastSegelevations[i].elevation,3)]);
+        block+=blockunit;
+
+
+    }
+    document.getElementById('chart_div').style.display = 'block';
+    chart.draw(graphData, {
+        width: 640,
+        height: 200,
+        legend: 'none',
+        titleY: 'Elevation (m)',
+        hAxis: {title: "Distance (km)"}
+    });
+    if(dragOnce==true)
+    {
+        clickListener=google.maps.event.addListener(map, 'click', function(event) {
+            placeMarker(event.latLng); }); // for make delay in subsequent clicks.This function drawGraph will be called  from function "computeTotalDistance()" after 1000 milli seconds
+        dragOnce=false;
+    }
+
+}
+
+function plotElevation(results, status)
+{
+
+    if (status == google.maps.ElevationStatus.OK)
+    {
+        elevations=  elevations.concat(results);
+
+    }
+
+}
+
+// function to make the end part of kml data
+function makeFile()
+{
+
+    // to calculate the c value for calories
+    switch(sport)
+    {
+        case "Mountain Biking":
+            c=8.5;
+            break;
+        case "Static Bike":
+            c= 0.0466*aveSpeed + 0.7619;
+            break;
+        default:
+            c = 0.0162 * aveSpeed *aveSpeed - 0.0622*aveSpeed + 1.0089;
+            break;
+    }
+
+    // functions to calculate average speed and calories.
+
+    aveSpeed=roundNumber(distance/duration,2);
+    calories= rmr * c * duration * 60 / 1440;
+    calories=roundNumber(calories,2);
+
+    // end- functions to calculate average speed and calories.
+
+    if(kml==false)
+    {
+        kmldata(directionsDisplay.directions);
+        google.maps.event.removeListener(clickListener); // to stop any more event listening for click
+        directionsDisplay.setOptions(rendererOptions2);// for disable dragging last  segment
+
+    }
+
+    document.getElementById('butt').style.display="none";// to hide click me if clicked once
+
+    // made 3 second  dely to finish fetching elevation data
+    setTimeout(kmlData,3000);
+
+}
+
+// made it seperate function for make a delay
+function kmlData () ///Start Date and Time (startDate and startTime) to be inserted into file (not sure if this can be done in the KML schema or if it needs to go in the Extended Data
+{
+    data+='&ltPlacemark&gt  &ltPoint&gt &ltcoordinates&gt' +  firstStartPoint.lng() + ',' + firstStartPoint.lat() +',' + 0 + '&lt/coordinates&gt  &lt/Point&gt  &lt/Placemark&gt';// start placemark data
+    data+='&ltPlacemark&gt  &ltPoint&gt &ltcoordinates&gt' +  end.lng() + ',' + end.lat() +',' + 0 + '&lt/coordinates&gt  &lt/Point&gt  &lt/Placemark&gt';// end placemark data
+    data+='&ltPlacemark&gt      &ltname&gt' + rideName + '&lt/name&gt      &ltdescription&gt  &lt![CDATA[<a href="http://www.cyclemycity.com/">Created at http://www.cyclemycity.com</a>]]&gt  &lt/description&gt    &ltstyleUrl&gt#sameLinePolyColour&lt/styleUrl&gt';
+    data+='&ltExtendedData&gt &ltData name="rideName" &gt  &ltdisplayName&gt Ride Name  &lt/displayName&gt &ltvalue&gt' + rideName + '&lt/value&gt &lt/Data&gt &ltData name="Type"&gt &ltdisplayName&gt Type of Ride &lt/displayName&gt &ltvalue&gt ' + type + ' &lt/value&gt &lt/Data&gt &ltData name="Sport"&gt &ltdisplayName&gt Sport &lt/displayName&gt &ltvalue&gt ' + sport + '&lt/value&gt &lt/Data&gt';
+    data+='&ltData name="startDate" &gt &ltdisplayName&gt Start Date &lt/displayName&gt &ltvalue&gt' + startDate + '&lt/value&gt &lt/Data&gt &ltData name="startTime"&gt &ltdisplayName&gt Start Time &lt/displayName&gt &ltvalue&gt ' + startTime + '&lt/value&gt &lt/Data&gt';
+    data+='&ltData name="groupRide"&gt &ltdisplayName&gt Group Ride &lt/displayName&gt &ltvalue&gt' + groupRide + '&lt/value&gt &lt/Data&gt &ltData name="duration"&gt &ltdisplayName&gt Duration &lt/displayName&gt &ltvalue&gt' + duration + '&lt/value&gt &lt/Data&gt &ltData name="maxSpeed"&gt &ltdisplayName&gt Maximum Speed &lt/displayName&gt &ltvalue&gt' + maxSpeed + '&lt/value&gt &lt/Data&gt';
+    data+='&ltData name="hrAve"&gt &ltdisplayName&gt Average Heart Rate &lt/displayName&gt &ltvalue&gt' + hrAve + '&lt/value&gt &lt/Data&gt &ltData name="hrMax"&gt &ltdisplayName&gt Maximum Heart Rate &lt/displayName&gt &ltvalue&gt' + hrMax + '&lt/value&gt &lt/Data&gt &ltData name="routeFollowed"&gt &ltdisplayName&gt Route Followed &lt/displayName&gt &ltvalue&gt' + routeFollowed + '&lt/value&gt &lt/Data&gt';
+    data+='&ltData name="routeDirection"&gt &ltdisplayName&gt Route Direction &lt/displayName&gt &ltvalue&gt' + routeDirection + '&lt/value&gt &lt/Data&gt &ltData name="aveSpeed"&gt &ltdisplayName&gt Average Speed &lt/displayName&gt &ltvalue&gt' + aveSpeed + '&lt/value&gt &lt/Data&gt &ltData name="calories"&gt &ltdisplayName&gt Calories &lt/displayName&gt &ltvalue&gt' + calories + '&lt/value&gt &lt/Data&gt';
+    data+='&ltData name="Distance"&gt &ltdisplayName&gt Ride Distance &lt/displayName&gt &ltvalue&gt' + total/1000 + '&lt/value&gt &lt/Data&gt ';
+    data+='&lt/ExtendedData&gt &ltLineString&gt         &ltextrude&gt1&lt/extrude&gt         &lttessellate&gt1&lt/tessellate&gt         &ltaltitudeMode&gtclampToGround&lt/altitudeMode&gt';
+    if(kml==true)
+    {
+        data+='&ltfilename&gt ' + filePath  + '&lt/filename&gt';
+    }
+
+
+    if(kml==false)
+    {
+        data+='&ltcoordinates&gt ';
+        for (var i = 0; i < elevations.length; i++)
+        {
+            // data variable is appended with location and elevation data
+            data+=elevations[i].location.lng() +','+ elevations[i].location.lat() +',' +  elevations[i].elevation + '\n' ;
+
+        }
+        for (var i = 0; i < lastSegelevations.length; i++)
+        {
+            data+=lastSegelevations[i].location.lng() +','+ lastSegelevations[i].location.lat() +',' +  lastSegelevations[i].elevation +  '\n' ;
+        }
+        data+='&lt/coordinates&gt';
+    }
+    data+='&lt/LineString&gt &lt/Placemark&gt &lt/Document&gt &lt/kml&gt';
+    document.getElementById('data').innerHTML = data;// for showing it on the page
+    //The above displays the kml file contents on the screen. Avion are to write it to a .kml file and save the file/details in the database, not write it to the screen.
+}
+
+
+
+
+
+// function to make center of the map based on passed address if geolocation failed
+
+function codeAddress(addressvalue) {
+    var address = addressvalue;
+    geocoder.geocode( { 'address': address}, function(results, status) {
+        if (status == google.maps.GeocoderStatus.OK) {
+            map.setCenter(results[0].geometry.location);
+
+        }
+    });
+}
+
+function deleteMarkers()
+{
+
+    if (marker2 )
+    {
+        marker2.setMap(null);
+        marker2=0;
+    }
+}
+
+function computeTotalDistance(result) /// This needs to recalculate to measure a new polyline if a route's polyline is imported from another file...
+{
+
+    var myride = result.routes[0];
+    // to avoid duplicate start/end points
+    var v;
+    if(fresh==false)
+    {
+        v=0;
+        fresh=true;
+    }
+    else {
+        v=1;
+    }
+    // to avoid duplicate start/end points
+
+    // undo functionality
+    //prevtotalLastElement=totalLastElement;
+    totalLastElement=0;
+    //for total distance
+
+    for (i = 0; i < myride.legs.length; i++)
+    {
+        totalLastElement+= myride.legs[i].distance.value;
+    }
+
+    document.getElementById('total').textContent=(total+totalLastElement)/1000 +" km";
+
+    distance=(total+totalLastElement)/1000;// for calculating avgspeed
+    //for showing elevation chart for last segment
+    path22.length=0;
+
+    for (i = 0; i < myride.legs.length; i++)
+    {
+
+        for (j =0; j < myride.legs[i].steps.length; j++)
+        {
+
+            for (k = v; k < myride.legs[i].steps[j].path.length; k+=2)
+            {
+
+                path22.push(myride.legs[i].steps[j].path[k]);// for fetching elevation data
+                end=myride.legs[i].steps[j].path[k];
+            }
+        }
+
+    }
+
+
+    //for elevation
+    chartData();
+    setTimeout(drawGraph,3000);
+
+
+}
+
+// function to get values for polyline and for elevation request
+function kmldata(result)
+{
+
+
+    var myride = result.routes[0];
+    //for total distance
+
+    for (i = 0; i < myride.legs.length; i++)
+    {
+        total += myride.legs[i].distance.value;
+
+    }
+
+    //for kml data
+
+    for (i = 0; i < myride.legs.length; i++)
+    {
+
+        for (j =0; j < myride.legs[i].steps.length; j++)
+        {
+
+            for (k = 0; k < myride.legs[i].steps[j].path.length; k++)
+            {
+                path.push(myride.legs[i].steps[j].path[k]);// for drawing poly line
+                path2.push(myride.legs[i].steps[j].path[k]);// for fetching elevation data
+            }
+        }
+
+    }
+
+}
+
+
+function drawFetchedGraphData()
+{
+    var block;
+    totalLastElement=routeDist * 1000;
+
+    lastSegmentSampleCount = roundNumber(((totalLastElement)/100),0) + 1;
+    chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+    var graphData = new google.visualization.DataTable();
+    var blockunit=totalLastElement/((noOfData-1)*1000);
+    var block=0;
+    graphData.addColumn('number', 'Distance');
+    graphData.addColumn('number', 'Elevation');
+    for (var i = 0; i < redData.length; i++)
+    {
+
+        graphData.addRow([roundNumber(block,3), roundNumber(redData[i],3)]);
+        block+=blockunit;
+
+    }
+
+    document.getElementById('chart_div').style.display = 'block';
+    chart.draw(graphData, {
+        width: 640,
+        height: 200,
+        legend: 'none',
+        titleY: 'Elevation (m)',
+        hAxis: {title: "Distance (km)"}
+    });
+
+
+}
+
+
+function drawfromKMLFile()
+{
+    kml=true;
+
+
+
+    google.maps.event.removeListener(clickListener); // to stop any more event listening for click.
+
+    if (window.XMLHttpRequest)
+    {// code for IE7+, Firefox, Chrome, Opera, Safari
+        xmlhttp=new XMLHttpRequest();
+    }
+    else
+    {// code for IE6, IE5
+        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+
+
+    filename= filePath.split('/');
+    xmlhttp.open("GET",filename[3],false);
+    xmlhttp.send();
+    xmlDoc=xmlhttp.responseXML;
+
+    if (xmlDoc.getElementsByTagName("filename").length==1 )
+    {
+        filePath=xmlDoc.getElementsByTagName("filename")[0].childNodes[0].nodeValue;
+        filename= filePath.split('/');
+        xmlhttp.abort();
+        if (window.XMLHttpRequest)
+        {// code for IE7+, Firefox, Chrome, Opera, Safari
+            xmlhttp2=new XMLHttpRequest();
+        }
+        else
+        {// code for IE6, IE5
+            xmlhttp2=new ActiveXObject("Microsoft.XMLHTTP");
+        }
+
+        xmlhttp2.open("GET",filename[3],false);
+        xmlhttp2.send();
+        xmlDoc=xmlhttp2.responseXML;
+
+    }
+
+
+    x=xmlDoc.getElementsByTagName("Data");
+    var loc=(xmlDoc.getElementsByTagName("coordinates")[0].childNodes[0].nodeValue).split(",");
+    var loc2=(xmlDoc.getElementsByTagName("coordinates")[1].childNodes[0].nodeValue).split(",");
+    end = new google.maps.LatLng(loc2[1],loc2[0]);
+    firstStartPoint= new google.maps.LatLng(loc[1],loc[0]);
+
+
+    routeDist=parseFloat(x[4].getElementsByTagName("value")[0].childNodes[0].nodeValue);
+
+
+    document.getElementById('total').textContent= "Distance:- "+ routeDist + " K.M" ;
+    totalLastElement=routeDist*1000; // to make meters
+    distance=(total+totalLastElement)/1000;// for calculating avgspeed
+
+    elevdata=(xmlDoc.getElementsByTagName("coordinates")[2].childNodes[0].nodeValue).split(",");
+
+    var len=elevdata.length;
+
+    for (var i=0,k=1;i<len;i++,k++)
+    {
+
+
+        if(k==3)// we want third part of coordinates which seperated by comma
+        {
+            redData.push((elevdata[i].split(" "))[0]);// third elements have two parts which seperated by space and we want the first part only
+            k=1;
+        }
+
+
+
+    }
+
+    noOfData=redData.length;
+    drawFetchedGraphData();
+    var ctaLayer = new google.maps.KmlLayer(filePath);
+    ctaLayer.setMap(map);
+
+}
+
+
+
+
+function placeMarker(location) {
+
+    path = poly.getPath();
+    count+=1;
+    dragOnce=true;
+    if (count==1)
+    {
+        start=location;
+        firstStartPoint=location;// to get start as place mark
+        marker1 = new google.maps.Marker({
+            position: location,
+            map: map,
+            icon: startimage
+        });
+
+    }
+    else if (count==2)
+    {
+        google.maps.event.removeListener(clickListener); // to stop any more event listening for click. for make delay in subsequent clicks. enable in function "drawGraph()"
+        marker2 = new google.maps.Marker({
+            position: location,
+            map: map,
+            icon: stopimage
+
+        });
+        end=location;
+
+        calcRoute();
+        // undo functionality
+        /*prevStart=start;
+         prevEnd=end;*/
+
+
+    }
+    else
+    {
+        google.maps.event.removeListener(clickListener); // to stop any more event listening for click
+        deleteMarkers();
+
+        kmldata(directionsDisplay.directions);
+
+
+        start=end;
+        end=location;
+        marker2 = new google.maps.Marker({
+            position: end,
+            map: map,
+            icon: stopimage
+        });
+
+        calcRoute();
+        setTimeout(drawChart,1000);
+
+
+    }
+
+
+}
+
+function calcRouteWalk()
+{
+
+    var request = {
+        origin:start,
+        destination:end,
+
+        travelMode: google.maps.DirectionsTravelMode.WALKING
+    };
+    directionsService.route(request, function(result, status) {
+        if (status == google.maps.DirectionsStatus.OK)
+        {
+            directionsDisplay.setDirections(result);
+        }
+    });
+}
+// to set mode BICYCLING
+function calcRoute()
+{
+    var request = {
+        origin:start,
+        destination:end,
+        travelMode: google.maps.DirectionsTravelMode.BICYCLING
+    };
+    directionsService.route(request, function(result, status) {
+        if (status == google.maps.DirectionsStatus.OK)
+        {
+            directionsDisplay.setDirections(result);
+        }
+        else
+        {
+            calcRouteWalk(); // if bicycle mode fail want to set to walking mode
+        }
+    });
+}
+
+
+
+function initialize()
+{
+
+    geocoder = new google.maps.Geocoder();
+
+    if (navigator.geolocation) // for checking wheather the browser supports geolocation
+    {
+        navigator.geolocation.getCurrentPosition
+                (
+                        function successFunction(position)
+                        {
+                            // variable assigned the geolocation coordinates fetched from the supported browser
+                            lat = position.coords.latitude;
+                            lng = position.coords.longitude;
+                            map.setCenter(new google.maps.LatLng(lat,lng));
+                        },
+                        function errorFunction(position)
+                        {
+                            codeAddress('Sydney');// call this function with address to make the address as center. This is the worst-case default location.
+                            //However, Avion should make the code look up a city from the user's profile informaiton and use that location instead, if they have entered a city in their address.
+                            //If geolocation is working then the site will center the map based on their IP address before using any default location.
+                        }
+                );
+    }
+    else
+    {
+        alert('It seems like Geolocation, which is required for this page, is not enabled in your browser. Please use a browser which supports it.');
+    }
+    var myOptions = {
+        zoom:14,
+        scaleControl:true,
+        disableDoubleClickZoom:true,
+        mapTypeControlOptions: { mapTypeIds: [google.maps.MapTypeId.SATELLITE, google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.HYBRID,  google.maps.MapTypeId.TERRAIN], style: google.maps.MapTypeControlStyle.DEFAULT },
+        mapTypeId: google.maps.MapTypeId.TERRAIN
+    }
+    elevator = new google.maps.ElevationService();
+    map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+
+    var polyOptions = {
+        strokeColor: '#8B0000',
+        strokeOpacity: 1.0,
+        strokeWeight: 5
+    }
+    poly = new google.maps.Polyline(polyOptions);
+    poly.setMap(map);
+    directionsDisplay.setMap(map);
+    clickListener=google.maps.event.addListener(map, 'click', function(event) {
+        placeMarker(event.latLng); });
+    google.maps.event.addListener(map, 'zoom_changed', function() {
+        zoomnum= map.getZoom();
+        maptype= map.getMapTypeId();
+        if (zoomnum>=15 && maptype=="terrain") {  map.setMapTypeId(google.maps.MapTypeId.ROADMAP); } });
+    google.maps.event.addListener(directionsDisplay, 'directions_changed', function() {
+        computeTotalDistance(directionsDisplay.directions);
+    });
+
+    var adUnitDiv = document.createElement('div');
+    var adUnitOptions = {
+        format: google.maps.adsense.AdFormat.HALF_BANNER,
+        position: google.maps.ControlPosition.RIGHT_BOTTOM,
+        publisherId:'ca-pub-8600257120968353',
+        channelNumber: '2047011572',
+        map: map,
+        visible: true
+    };
+    var adUnit = new google.maps.adsense.AdUnit(adUnitDiv, adUnitOptions);
+    var bikeLayer = new google.maps.BicyclingLayer();
+    bikeLayer.setMap(map);
+
+
+    // set date
+    currentDate = new Date();
+    month = currentDate.getMonth() + 1;
+    day = currentDate.getDate();
+    year = currentDate.getFullYear();
+
+    startDate=day + "/" + month  + "/" + year;
+
+    hr = currentDate.getHours()
+    min = currentDate.getMinutes()
+    startTime= hr + ":" + min;
+
+    if(gender==0)
+    {
+        rmr= ( 10 * weight ) + ( 6.25 * height) - (5 * age) + 5;
+    }
+    else
+    {
+        rmr=(10 * weight) + (6.25 * height) - (5 * age) - 161;
+    }
+
+}
+
+</script>
+</head>
+<body onload="initialize()">
+
+<div id="total" style="width:100%; height:10%"> </div><!-- for displaying total distance -->
+<div id="map_canvas" style="width:50%; height:100%"></div> <!-- for displaying map -->
+<div id="chart_div"></div> <!-- for displaying chart -->
+<div>
+    <select onchange="changeType(this)">
+        <option>Circuit</option>
+        <option>Linear</option>
+        <option>Climb</option>
+    </select>
+</div>
+<div>
+    <select onchange="changeSport(this)">
+        <option>Road Cycling</option>
+        <option>Mountain Biking</option>
+        <option>Touring</option>
+        <option>Commute</option>
+        <option>Static Bike</option>
+    </select>
+</div>
+
+
+
+
+<!--<form action="">-->
+
+<input type="checkbox" name="ride" value="yes" id="groupYes" onclick="groupYes(this)" /> Group Ride?<br />
+
+<h4> Start </h4>
+Date: <input type="text" name="date" id="date" onchange="fetchDate(this)" /><br />
+Time: <input type="text" name="time" id="time" onchange="fetchTime(this)" /><br />
+
+<h4> Duration </h4>
+Hours: <input type="text" name="hours" id="hour" onchange="fetchHour(this)" /><br />
+Minutes: <input type="text" name="minutes" id="minute" onchange="fetchMinute(this)"  /><br />
+Maximum Speed: <input type="text" name="maxspeed" id="maxspeed" onchange="fetchmaxSpeed(this)"  /><br />
+
+
+<h4> Heart beats </h4>
+Maximum rate: <input type="text" name="heartmax" id="heartmax" onchange="fetchHeartMax(this)"  /><br />
+Average rate: <input type="text" name="heartavg" id="heartavg" onchange="fetchHeartAvg(this)" /><br />
+
+<h4> Route followed </h4>
+<select id="routeFollowed" onchange="changeRouteFollowed(this)" >
+    <option>none</option>
+    <option>kml</option>
+</select>
+
+<!--</form>-->
+<br/>
+
+
+<!-- /// Insert radio boxes to select "Group Ride?" yes or no
+/// Insert boxes to input start date and time
+/// Insert box to input duration (2 boxes may be required to accept hours and minutes separately, then a function to
+convert to and from seconds (i.e. duration=hours*3600 + minutes*60)
+/// Insert box to input maximum speed
+/// Insert boxs to input average and maximum heart rates
+/// Insert dropdown box to select the route followed -->
+
+
+<div>
+    <h4> Direction</h4>
+    <select id="direction" onchange="changeDirection(this)">
+
+    </select>
+</div>
+
+
+<div id="butt" onclick="makeFile()">  click me   </div> <!-- for displaying "click me" and for invoke makeFile()  function which will show the kml data on the page -->
+<!--   <div id="butt2" onclick="unDo()">  undo   </div> -->
+<div id="data"> </div> <!-- display location for kml data  -->
+</body>
+</html>
+
